@@ -1,4 +1,4 @@
-# Estratégia de Testes — MyChurch
+# Estratégia de Testes
 
 Fonte única das regras de teste do projeto. O `arquitetura.md` define camadas, portas e nomes e **remete a este documento** sem repetir regras de teste; este documento remete de volta às seções de arquitetura de que depende, também sem repeti-las.
 
@@ -109,7 +109,7 @@ Fluxo (proposta):
 1. **Projeto Supabase separado**, com URL e chaves próprias. Nenhuma chave de homologação vale em produção, nem o contrário.
 2. **Mesmo schema de `main`:** as mesmas migrations, aplicadas pelo pipeline, nunca alteração manual.
 3. **Dados sintéticos**, gerados por um seed versionado no repositório. Nenhum dado de produção é copiado para homologação.
-4. **Usuários de teste por papel e por filial**, cobrindo a matriz de RBAC, para que o E2E exercite autorização e RLS de verdade.
+4. **Usuários de teste por papel e por unidade**, cobrindo a matriz de RBAC, para que o E2E exercite autorização e RLS de verdade.
 5. **Serviços externos** (pagamento, e-mail, provedor de embeddings) em modo sandbox do provedor ou simulados na porta OUT: mesmo comportamento, sem efeito real.
 6. **Estado previsível:** o E2E completo começa do seed, com o banco de homologação restaurado antes da execução, e cada teste cria os dados de que precisa, sem depender de ordem.
 7. **Paridade:** o Supabase local usa as mesmas migrations e o mesmo seed, então dev, CI e homologação se comportam do mesmo jeito.

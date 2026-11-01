@@ -4,7 +4,7 @@ Fonte da verdade das decisões de arquitetura do projeto: backend (núcleo), fro
 
 - Regras marcadas com **[lint]** são verificadas automaticamente (Anexos A, B e E) e falham o CI.
 - Itens marcados com **[pendente]** esperam decisão (seção 8). No momento não há nenhum.
-- Fora do escopo deste documento: estratégia de testes (`testes.md`, fonte única das regras de teste), segurança (`seguranca.md`), módulo de busca inteligente (`busca.md`), ferramental de IA e fluxo de trabalho (`constitution.md` / `CLAUDE.md`).
+- Fora do escopo deste documento: estratégia de testes (`testes.md`, fonte única das regras de teste), segurança (`seguranca.md`), busca, ferramental de IA e fluxo de trabalho (`constitution.md` / `CLAUDE.md`), quando o projeto os tiver.
 
 ---
 
@@ -15,8 +15,8 @@ Fonte da verdade das decisões de arquitetura do projeto: backend (núcleo), fro
 | Termo | Significado neste projeto |
 |---|---|
 | **domain** | A camada de domínio da Clean Architecture (entidades, builders, value objects, agregados). Nunca é usado para dizer "assunto" ou "área do negócio". |
-| **módulo** | Uma área do negócio isolada (`membros`, `financeiro`, `celulas`). Tem as camadas `domain`, `application`, `infra` e `presentation`. |
-| **tela / feature** | O assunto de uma tela (lista de membros, cadastro de célula). |
+| **módulo** | Uma área do negócio isolada (`pedidos`, `faturamento`, `clientes`). Tem as camadas `domain`, `application`, `infra` e `presentation`. |
+| **tela / feature** | O assunto de uma tela (lista de pedidos, cadastro de cliente). |
 | **Porta IN** | Interface de um caso de uso: o que o mundo externo pede à `application`. |
 | **Porta OUT** | Interface de uma dependência que a `application` precisa (repositório, gateway, sessão). Implementada só na `infra`. |
 | **View** | Componente do Atomic Design (atom, molecule, organism, template, page). Burra: recebe props e devolve JSX. |
@@ -59,7 +59,7 @@ Exemplos de diretórios válidos: `shared`, `pages`, `examples`, `customer-setti
 | `*.component.tsx` | componentes | atoms, molecules, organisms e templates. **O nível vem da pasta, não do sufixo** |
 | `*.context.tsx` | contextos React e hooks associados | só no `ui/` ou no Container (seção 4.10) |
 | `*.provider.tsx` | providers de composição, wrappers globais, integração de runtime | `presentation/providers/` (`theme.provider.tsx`, `query.provider.tsx`); `app.providers.tsx` compõe todos |
-| `*.hook.ts` | hooks | hook do ViewModel (`use-criar-membro.hook.ts`) e demais hooks |
+| `*.hook.ts` | hooks | hook do ViewModel (`use-criar-pedido.hook.ts`) e demais hooks |
 | `*.store.ts` | stores | Zustand |
 | `*.spec.ts` | testes automatizados | testes unitários e de componente (`*.spec.tsx` quando o teste usa JSX, com RTL) |
 
@@ -96,7 +96,7 @@ Fora dessas exceções, prefira sempre `kebab-case`.
 
 **Como a regra se aplica aqui**
 
-- **Responsabilidade, não implementação:** o arquivo é `membro.repository.ts` em `infra/repositories/`, não `supabase-membro.repository.ts`. A tecnologia aparece no identificador da classe (`SupabaseMembroRepository`); a camada, no caminho.
+- **Responsabilidade, não implementação:** o arquivo é `pedido.repository.ts` em `infra/repositories/`, não `supabase-pedido.repository.ts`. A tecnologia aparece no identificador da classe (`SupabasePedidoRepository`); a camada, no caminho.
 - **Identificadores no código** (classes, tipos, funções) seguem a convenção usual do TypeScript (PascalCase para classes e tipos, camelCase para funções e variáveis). A regra trata apenas de nomes de arquivos e diretórios.
 - **Testes:** o sufixo de cada nível de teste (`*.spec.ts`, `*.test.ts`, `*.e2e.ts`) e a configuração dos runners estão em `testes.md` (seção 7).
 - **O que o verificador não pega:** "responsabilidade, não implementação" e nomes ambíguos dependem de revisão humana. O script confere formato, pasta e sufixo.
@@ -240,34 +240,34 @@ Regras adicionais:
 
 **Entidade.** Construtor **privado**. Sem setters. Expõe **getters somente leitura** para os mappers. Todo comportamento é método da entidade.
 
-**Builder.** Público, fluente, é o **único caminho de criação e de reconstituição** de uma entidade. A entidade entrega ao Builder uma função de criação por um método estático (que enxerga o construtor privado); sem essa função, ninguém instancia a entidade. O `tsc` recusa `new Membro(...)` fora da classe.
+**Builder.** Público, fluente, é o **único caminho de criação e de reconstituição** de uma entidade. A entidade entrega ao Builder uma função de criação por um método estático (que enxerga o construtor privado); sem essa função, ninguém instancia a entidade. O `tsc` recusa `new Pedido(...)` fora da classe.
 
 ```ts
-// domain/entities/membro.entity.ts
-export type MembroProps = { id: MembroId; nome: NomeCompleto; papel: Papel; filialId?: FilialId };
+// domain/entities/pedido.entity.ts
+export type PedidoProps = { id: PedidoId; nome: NomeCompleto; papel: Papel; unidadeId?: UnidadeId };
 
-export class Membro {
-  private constructor(private readonly props: Readonly<MembroProps>) {}
-  static builder(): MembroBuilder { return new MembroBuilder((p) => new Membro(p)); }
-  get id(): MembroId { return this.props.id; }
+export class Pedido {
+  private constructor(private readonly props: Readonly<PedidoProps>) {}
+  static builder(): PedidoBuilder { return new PedidoBuilder((p) => new Pedido(p)); }
+  get id(): PedidoId { return this.props.id; }
   get nome(): NomeCompleto { return this.props.nome; }        // getters somente leitura
-  transferirPara(filial: FilialId): Result<Membro> { /* comportamento, invariantes */ }
+  transferirPara(unidade: UnidadeId): Result<Pedido> { /* comportamento, invariantes */ }
 }
 
-// domain/builders/membro.builder.ts
-export class MembroBuilder {
-  constructor(private readonly criar: (p: MembroProps) => Membro) {}
+// domain/builders/pedido.builder.ts
+export class PedidoBuilder {
+  constructor(private readonly criar: (p: PedidoProps) => Pedido) {}
   comNome(n: string): this { /* NomeCompleto.criar(n) */ return this; }
   comPapel(p: string): this { /* Papel.criar(p) */ return this; }
-  restaurar(dados: MembroPersistido): this { /* reconstitui a partir da persistência (valores primitivos) */ return this; }
-  build(): Result<Membro> { /* valida obrigatórios e invariantes cruzadas; acumula todos os erros */ }
+  restaurar(dados: PedidoPersistido): this { /* reconstitui a partir da persistência (valores primitivos) */ return this; }
+  build(): Result<Pedido> { /* valida obrigatórios e invariantes cruzadas; acumula todos os erros */ }
 }
 ```
 
 Regras do Builder:
 
 - `build()` devolve `Result<Entidade>` e **acumula** os erros (útil para formulários).
-- Invariantes cruzadas ficam no `build()` (ex.: "se o papel é Pastor, a filial é obrigatória").
+- Invariantes cruzadas ficam no `build()` (ex.: "se o papel é Gerente, a unidade é obrigatória").
 - O Builder é chamado por dois lugares: o caso de uso (criação) e o mapper da `infra` (reconstituição).
 - Erro esperado devolve `Result`. Exceção só para bug ou estado impossível.
 
@@ -279,28 +279,28 @@ Regras do Builder:
 - Referência a outro agregado é sempre por id, nunca por objeto.
 - Uma transação não deve alterar dois agregados; quando precisar de atomicidade entre eles, use uma porta OUT dedicada implementada como função SQL transacional (RPC), nunca uma sequência de chamadas soltas.
 
-**Domain Service.** Regra que envolve mais de um agregado ou não pertence a nenhum, sem estado. Exemplo: `AutorizacaoService` com a hierarquia de papéis e a matriz sede/filial.
+**Domain Service.** Regra que envolve mais de um agregado ou não pertence a nenhum, sem estado. Exemplo: `AutorizacaoService` com a hierarquia de papéis e a matriz de acesso por unidade.
 
 ### 3.6 Application: portas e casos de uso
 
-- **Porta IN** = interface do caso de uso, com os tipos `Input` e `Output` no mesmo arquivo (`ports/in/criar-membro.provider.ts`).
-- **Porta OUT** = interface de uma dependência (`ports/out/membro.repository.ts`, `sessao.provider.ts`, `relogio.provider.ts`). Contratos de repositório usam `.repository.ts`; as demais portas, `.provider.ts` (seção 0.2).
+- **Porta IN** = interface do caso de uso, com os tipos `Input` e `Output` no mesmo arquivo (`ports/in/criar-pedido.provider.ts`).
+- **Porta OUT** = interface de uma dependência (`ports/out/pedido.repository.ts`, `sessao.provider.ts`, `relogio.provider.ts`). Contratos de repositório usam `.repository.ts`; as demais portas, `.provider.ts` (seção 0.2).
 - **Caso de uso** implementa uma porta IN e recebe as portas OUT pelo construtor.
 
 ```ts
-export interface CriarMembroPort { execute(i: CriarMembroInput): Promise<Result<MembroDto>> }
-export interface MembroRepository { salvar(m: Membro): Promise<Result<void>>; buscarPorId(id: MembroId): Promise<Membro | null> }
+export interface CriarPedidoPort { execute(i: CriarPedidoInput): Promise<Result<PedidoDto>> }
+export interface PedidoRepository { salvar(m: Pedido): Promise<Result<void>>; buscarPorId(id: PedidoId): Promise<Pedido | null> }
 
-export class CriarMembro implements CriarMembroPort {
-  constructor(private readonly membros: MembroRepository, private readonly sessao: SessaoPort) {}
-  async execute(i: CriarMembroInput): Promise<Result<MembroDto>> {
-    // 1. autoriza (domain service + usuário da sessão)  2. Membro.builder()…build()
-    // 3. membros.salvar(...)                            4. membroParaDto(membro)
+export class CriarPedido implements CriarPedidoPort {
+  constructor(private readonly pedidos: PedidoRepository, private readonly sessao: SessaoPort) {}
+  async execute(i: CriarPedidoInput): Promise<Result<PedidoDto>> {
+    // 1. autoriza (domain service + usuário da sessão)  2. Pedido.builder()…build()
+    // 3. pedidos.salvar(...)                            4. pedidoParaDto(pedido)
   }
 }
 ```
 
-**Read models (consultas).** Casos de uso somente de leitura usam uma porta OUT de consulta (`MembroQueryPort`) que devolve DTOs de leitura diretamente, sem reconstruir entidades. Escritas passam sempre pelo agregado. Um caso de leitura que precisa de várias consultas as executa **em paralelo dentro do próprio caso** (`Promise.all`) e devolve um único DTO: a tela paga um só roundtrip (seção 4.9).
+**Read models (consultas).** Casos de uso somente de leitura usam uma porta OUT de consulta (`PedidoQueryPort`) que devolve DTOs de leitura diretamente, sem reconstruir entidades. Escritas passam sempre pelo agregado. Um caso de leitura que precisa de várias consultas as executa **em paralelo dentro do próprio caso** (`Promise.all`) e devolve um único DTO: a tela paga um só roundtrip (seção 4.9).
 
 **Autorização** acontece no caso de uso, com o usuário obtido pela porta OUT `SessaoPort`, nunca na `presentation`.
 
@@ -349,10 +349,10 @@ export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: ErrorD
 ### 3.10 `main` (injeção de dependências)
 
 ```ts
-// main/membros.factory.ts
+// main/pedidos.factory.ts
 import "server-only";
-export const makeCriarMembro = (): CriarMembroPort =>
-  new CriarMembro(new SupabaseMembroRepository(createSupabaseServer()), new SupabaseSessao(createSupabaseServer()));
+export const makeCriarPedido = (): CriarPedidoPort =>
+  new CriarPedido(new SupabasePedidoRepository(createSupabaseServer()), new SupabaseSessao(createSupabaseServer()));
 ```
 
 - Uma função `makeXxx()` por caso de uso, devolvendo a **porta IN**.
@@ -363,17 +363,17 @@ export const makeCriarMembro = (): CriarMembroPort =>
 
 ### 3.11 Comunicação entre módulos
 
-Módulos não se importam. Quando `financeiro` precisa de algo de `membros`:
+Módulos não se importam. Quando `faturamento` precisa de algo de `pedidos`:
 
-1. `financeiro` declara uma **porta OUT** própria na sua `application` (ex.: `MembroConsultaPort`);
-2. a `infra` de `financeiro` a implementa chamando a **porta IN** de `membros` (obtida pelo `main`);
+1. `faturamento` declara uma **porta OUT** própria na sua `application` (ex.: `PedidoConsultaPort`);
+2. a `infra` de `faturamento` a implementa chamando a **porta IN** de `pedidos` (obtida pelo `main`);
 3. os dados trafegam como DTOs.
 
 ### 3.12 Autorização em camadas
 
 1. **Middleware/proxy:** só renova a sessão. Não decide acesso.
 2. **Server Action:** exige sessão válida antes de chamar o caso de uso.
-3. **Caso de uso + domain service:** RBAC e hierarquia (papéis, matriz sede/filial). É testável sem banco.
+3. **Caso de uso + domain service:** RBAC e hierarquia (papéis, matriz de acesso por unidade). É testável sem banco.
 4. **RLS no Postgres:** defesa em profundidade. Protege mesmo se a aplicação falhar, mas **não substitui** a camada 3, porque não é testável em unidade nem expressa regras condicionais ricas.
 
 ### 3.13 Server Actions como única borda
@@ -387,10 +387,10 @@ Uma Server Action é um endpoint HTTP público. O pipeline é fixo:
 
 ```ts
 "use server";
-export async function criarMembroAction(input: CriarMembroInput): Promise<ActionResult<MembroDto>> {
-  const parsed = criarMembroSchema.safeParse(input);
+export async function criarPedidoAction(input: CriarPedidoInput): Promise<ActionResult<PedidoDto>> {
+  const parsed = criarPedidoSchema.safeParse(input);
   if (!parsed.success) return validationFail(parsed.error);
-  return toActionResult(await makeCriarMembro().execute(parsed.data));
+  return toActionResult(await makeCriarPedido().execute(parsed.data));
 }
 ```
 
@@ -423,7 +423,7 @@ Detalhes em `seguranca.md`. Aqui ficam as que a estrutura garante:
 - Webhook: assinatura sempre verificada antes de qualquer efeito, e processamento idempotente.
 - `import "server-only"` em `main/**` e em `*.server.ts`.
 - Nenhuma Server Action sem validação de input e sem checagem de sessão.
-- Nenhum dado por usuário, papel ou filial em cache compartilhado (seção 6.3).
+- Nenhum dado por usuário, papel ou unidade em cache compartilhado (seção 6.3).
 - RLS ativa em toda tabela exposta.
 
 ---
@@ -467,7 +467,7 @@ src/
    ├─ components/  ui/ · atoms/ · molecules/ · organisms/ · templates/ · pages/
    ├─ providers/   theme.provider.tsx · query.provider.tsx · app.providers.tsx   ('use client')
    ├─ auth/        cliente Supabase do navegador, só para autenticação (seção 3.9)
-   ├─ view-models/ · stores/                                (globais: shell, filial ativa)
+   ├─ view-models/ · stores/                                (globais: shell, unidade ativa)
    ├─ hooks/                                                (usados só pelo ui/ do shadcn)
    └─ lib/utils.ts                                          (cn)
 ```
@@ -479,7 +479,7 @@ src/
 - Sem diretiva `'use client'`: funciona no ambiente em que for importada.
 - **Não conhece módulo, domain, application nem ViewModel.** Só declara o tipo das props que precisa; quem se adapta é o ViewModel. **[lint]**
 - Recebe dados já formatados para exibição.
-- Pode ter nome de assunto (`membro-form.component.tsx`); isso não a torna dependente de nada, porque as props são strings e números.
+- Pode ter nome de assunto (`pedido-form.component.tsx`); isso não a torna dependente de nada, porque as props são strings e números.
 
 **ViewModel** (`modules/<d>/presentation/view-models/<tela>/`)
 - Contém toda a inteligência da tela: dados (React Query), estado de cliente (Zustand), formulário (RHF + Zod), chamadas (Server Actions).
@@ -542,14 +542,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-// app/membros/page.tsx  (Server Component)
+// app/pedidos/page.tsx  (Server Component)
 export default async function Page() {
-  const tabela = await carregarTabelaMembros();      // *.server.ts → props prontas
+  const tabela = await carregarTabelaPedidos();      // *.server.ts → props prontas
   return (
-    <MembrosPage
-      filtro={<MembroFiltroContainer />}
-      tabela={<MembrosTable {...tabela} acoes={(m) => <RemoverMembroContainer id={m.id} />} />}
-      formulario={<CriarMembroContainer />}
+    <PedidosPage
+      filtro={<PedidoFiltroContainer />}
+      tabela={<PedidosTable {...tabela} acoes={(m) => <RemoverPedidoContainer id={m.id} />} />}
+      formulario={<CriarPedidoContainer />}
     />
   );
 }
@@ -581,21 +581,21 @@ export default async function Page() {
 2. **Templates e pages são sempre Server.** Um container não importa template nem page. **[lint]**
 3. O Container renderiza **só a região interativa**. O conteúdo estático ao redor é montado no servidor e entra como slot (`children` ou prop `ReactNode`).
 4. Tudo que um Container importa entra no bundle do cliente. Por isso o Container importa a menor View que resolve o caso, e as partes estáticas são extraídas para o servidor por slots.
-5. **Interação por item de uma lista:** a lista (organism) fica no servidor; a ação de cada linha é um Container pequeno passado por slot (`acoes={(m) => <RemoverMembroContainer id={m.id} />}`). A lista inteira não vira cliente por causa de um botão.
+5. **Interação por item de uma lista:** a lista (organism) fica no servidor; a ação de cada linha é um Container pequeno passado por slot (`acoes={(m) => <RemoverPedidoContainer id={m.id} />}`). A lista inteira não vira cliente por causa de um botão.
 6. **View com callbacks** (`onSubmit`, `onChange`) só é montada por Container, porque funções não cruzam de Server para Client. **View sem callbacks** pode ser montada por qualquer um.
 7. Dados que entram no cliente são DTOs serializáveis: objetos simples, arrays, datas. Nunca entidade nem instância de classe.
 8. **Carga inicial:** o `page.tsx` (Server) chama o loader e passa o resultado ao Container como `initialData` do React Query. Mutations e leituras reativas usam Server Action.
 9. Regiões que leem dados de requisição (cookies, headers, `searchParams`) ficam dentro de `<Suspense>`, exigência dos Cache Components.
 
-**Exemplo — tela de membros:**
+**Exemplo — tela de pedidos:**
 
 | Peça | Nível | Ambiente |
 |---|---|---|
-| `MembrosPage`, `DashboardTemplate` | page, template | Server |
-| `MembrosTable` (linhas estáticas) | organism | Server |
-| Botão remover + confirmação | atom/molecule com `ui/Dialog` | Client (`RemoverMembroContainer`) |
-| Campo de filtro | molecule | Client (`MembroFiltroContainer`) |
-| Formulário de cadastro | organism | Client (`CriarMembroContainer`) |
+| `PedidosPage`, `DashboardTemplate` | page, template | Server |
+| `PedidosTable` (linhas estáticas) | organism | Server |
+| Botão remover + confirmação | atom/molecule com `ui/Dialog` | Client (`RemoverPedidoContainer`) |
+| Campo de filtro | molecule | Client (`PedidoFiltroContainer`) |
+| Formulário de cadastro | organism | Client (`CriarPedidoContainer`) |
 
 ### 4.7 Taxonomia de estado
 
@@ -608,7 +608,7 @@ export default async function Page() {
 
 Regras:
 - **Dado vindo do servidor nunca entra no Zustand.** Duplicaria o cache do React Query e perderia invalidação e refetch.
-- Chaves do React Query hierárquicas: `[modulo, agregado, ...filtros]` (por exemplo `['membros', 'lista', filialId, filtros]`), permitindo invalidar por prefixo.
+- Chaves do React Query hierárquicas: `[modulo, agregado, ...filtros]` (por exemplo `['pedidos', 'lista', unidadeId, filtros]`), permitindo invalidar por prefixo.
 - Realtime (`<tela>.realtime.ts`) alimenta o cache com `queryClient.setQueryData`; não cria fonte paralela.
 
 ### 4.8 Formulários e validação
@@ -664,7 +664,7 @@ O design system vive em `presentation/components` e em `app/globals.css` (tokens
 - Toda cor vem de **tokens semânticos** definidos em CSS variables (`--primary`, `--success`, `--warning`, `--destructive`, `--muted`…), no formato exigido pelo shadcn. Cor crua do Tailwind (`bg-blue-500`) não aparece em componente.
 - A paleta é escolhida pela **teoria da psicologia das cores**, de acordo com o sentimento que o produto deve transmitir, registrado na descrição do produto.
 - Paleta em **tons pastel**.
-- Dois temas obrigatórios, **dark e light**, ambos adaptados aos tokens do shadcn. **Dark é o padrão.**
+- Dois temas obrigatórios, **dark e light**, ambos adaptados aos tokens do shadcn. **Light é o padrão.**
 - Novas intenções de cor (sucesso, alerta, informação) entram como tokens; se precisarem de variante em um componente, adicione uma variante ao `cva` do arquivo do `ui/`.
 
 ### 5.2 Toggle de tema
@@ -713,7 +713,7 @@ Modelo do **Next.js 16 com Cache Components**. Neste modelo tudo é dinâmico po
 | Camada | Onde | Compartilhado entre usuários? | Uso no projeto |
 |---|---|---|---|
 | `'use cache'` (Cache Components) | Servidor | **Sim** | Só dado público/institucional, em `*.server.ts` |
-| React Query | Navegador do usuário | Não | Todo dado por usuário, papel ou filial; leitura reativa |
+| React Query | Navegador do usuário | Não | Todo dado por usuário, papel ou unidade; leitura reativa |
 | Router Cache | Navegador | Não | Gerenciado pelo Next.js; não configurar manualmente |
 | `fetch` nativo | Servidor | Depende do escopo | Chamadas a APIs externas ficam em gateways da `infra`; só são cacheadas se o loader estiver em escopo `'use cache'` |
 | CDN/Edge | Vercel | Sim | Sem Route Handlers não há respostas HTTP de dados; só assets estáticos |
@@ -722,12 +722,12 @@ Modelo do **Next.js 16 com Cache Components**. Neste modelo tudo é dinâmico po
 
 ### 6.3 Regra crítica de segurança
 
-**`'use cache'` armazena o resultado compartilhado por todos os usuários do deployment.** Usado com dado que depende de quem pede, faz o membro A ver o dado do membro B sem nenhum erro aparente.
+**`'use cache'` armazena o resultado compartilhado por todos os usuários do deployment.** Usado com dado que depende de quem pede, faz o usuário A ver o dado do usuário B sem nenhum erro aparente.
 
 - **Permitido:** dado público ou institucional, igual para todos (catálogos, tabelas de referência, textos institucionais).
-- **Proibido:** qualquer dado que dependa de usuário, papel, filial ou RLS. Esse dado é cacheado só no React Query (que é por navegador).
+- **Proibido:** qualquer dado que dependa de usuário, papel, unidade ou RLS. Esse dado é cacheado só no React Query (que é por navegador).
 - O Next.js não permite ler `cookies()`/`headers()` dentro de um escopo `'use cache'`; como o cliente Supabase da requisição depende dos cookies, consultas com sessão não rodam ali. Isso reforça a regra.
-- Exceção (por exemplo, dado por filial com a autorização feita fora do escopo e a filial como argumento da chave) exige **registro da decisão e revisão de segurança**.
+- Exceção (por exemplo, dado por unidade com a autorização feita fora do escopo e a unidade como argumento da chave) exige **registro da decisão e revisão de segurança**.
 - `'use cache: private'` **não é adotado**; uma decisão futura precisa ser registrada.
 
 ### 6.4 Onde a diretiva vive
@@ -773,7 +773,7 @@ Valores iniciais, a calibrar por medição:
 | Tipo de dado | `staleTime` | `gcTime` |
 |---|---|---|
 | Cadastro (muda pouco) | 5 min | 30 min |
-| Financeiro (volátil) | 0 (refaz ao montar/focar) | 5 min |
+| Saldos (voláteis) | 0 (refaz ao montar/focar) | 5 min |
 | Alimentado por Realtime | `Infinity` (a assinatura atualiza via `setQueryData`) | 30 min |
 | Busca digitada | 30 s | 5 min |
 
@@ -807,7 +807,7 @@ Um dado servido por `'use cache'` em Server Component **não** vira também uma 
 
 ### 6.11 Checklist de decisão
 
-1. O dado depende de usuário, papel ou filial? **Sim →** React Query (e loader sem cache). **Não →** passo 2.
+1. O dado depende de usuário, papel ou unidade? **Sim →** React Query (e loader sem cache). **Não →** passo 2.
 2. É público/institucional e estável? **Sim →** `'use cache'` em `*.server.ts`, com `cacheLife` explícito e `cacheTag`. **Não →** sem cache compartilhado.
 3. Existe mutation que o altera? **Sim →** `updateTag` na action (ou `revalidateTag(tag, 'max')` se tolerar atraso).
 4. Já existe outro dono de cache para esse dado? **Sim →** não crie um segundo.
