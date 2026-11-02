@@ -7,7 +7,7 @@ Cada estação é uma skill de entrada manual. O que passa de uma para a outra s
 | # | Comando | O que faz | Skills usadas | Critério de saída |
 |---|---|---|---|---|
 | 1 | `/esteira-refinar <descrição>` | mapa de decisões, arquitetura da região, spec, PRODUCT.md | `wayfinder`, `grilling`, `setup-matt-pocock-skills`, `improve-codebase-architecture`, `to-spec`, `impeccable init` | spec aprovada pelo usuário |
-| 2 | `/esteira-planejar <spec>` | tickets verticais, triage, label de frente | `to-tickets`, `triage` | backlog com `frente:frontend`, `frente:backend` ou `frente:ambas` |
+| 2 | `/esteira-planejar <spec>` | tickets verticais cortados em par backend/frontend, triage, label de frente | `to-tickets`, `triage` | backlog com `frente:frontend` ou `frente:backend` (um por ticket) e triage executada |
 | 3 | `/implementar-issue <n> [base]` | branch empilhada, TDD, commits | `implement` (`tdd`), `diagnosing-bugs` | commitado, `tsc`, lint e testes verdes |
 | 4 | `/gate-qualidade [base]` | laço de revisão sobre o diff | `impeccable audit`, `ponytail-review`, `code-review-spec`, `retro` | zero apontamentos novos em cada etapa |
 
@@ -15,7 +15,7 @@ Cada estação é uma skill de entrada manual. O que passa de uma para a outra s
 
 ## Decisões
 - **Branch por ticket, empilhada** (sem branch de integração nem `implement-spec`).
-- **Frente = label**, não ticket separado: o ticket continua sendo uma fatia vertical.
+- **Fatia vertical = par de tickets**: cada fatia que cruza as duas frentes vira um ticket de backend e outro de frontend (o frontend bloqueado pelo backend par). Fatia de uma frente só vira um ticket. Frente = label, sem `frente:ambas`.
 - **`/wizard` fora**: gera script bash para passo humano; a extração de regras é do `wayfinder` com `grilling`.
 - **Impeccable no gate**: `audit` primeiro; quando ele recomenda outras skills do impeccable, o gate as executa. `impeccable-full` não participa.
 - **Skills que viraram chamáveis por skill** (sem `disable-model-invocation`): `wayfinder`, `to-spec`, `to-tickets`, `triage`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `implement`, `retro` e, desde o fluxo 4, o próprio `gate-qualidade` (o `/auditar-release` o chama). `esteira-refinar`, `esteira-planejar` e `implementar-issue` continuam manuais.

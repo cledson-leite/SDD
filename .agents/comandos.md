@@ -45,7 +45,7 @@ Regra geral: nenhum comando faz `git push`, merge sem ordem sua, nem deploy. O h
 
 - **Para quê:** fatiar a spec em tickets e marcar a frente de cada um.
 - **Quando:** com a spec aprovada.
-- **Como:** o número da issue da spec. Gera tickets verticais (cada um entrega algo de ponta a ponta), faz o triage e coloca o rótulo `frente:frontend`, `frente:backend` ou `frente:ambas`.
+- **Como:** o número da issue da spec. Corta a spec em fatias verticais e separa cada fatia em um ticket de backend e outro de frontend (o frontend bloqueado pelo backend par), faz o triage e coloca o rótulo `frente:frontend` ou `frente:backend`.
 - **Saída:** a tabela do backlog com frente e dependências. Use a ordem das dependências no próximo passo.
 
 ## 3. `/implementar-issue <issue> [base]`
